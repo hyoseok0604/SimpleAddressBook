@@ -1,16 +1,26 @@
 package com.jhsapps.simpleaddressbook;
 
+import android.content.DialogInterface;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.LayoutInflater;
+import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.kennyc.bottomsheet.BottomSheetListener;
+import com.kennyc.bottomsheet.BottomSheetMenuDialogFragment;
+
 import java.util.ArrayList;
+import java.util.regex.Pattern;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -37,16 +47,53 @@ public class MainActivity extends AppCompatActivity {
 
         adapter = new CustomAdapter(this, shownData);
         lv.setAdapter(adapter);
+        lv.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
+                new BottomSheetMenuDialogFragment.Builder(MainActivity.this)
+                        .setSheet(R.menu.main_menu)
+                        .setTitle("메뉴")
+                        .object(position)
+                        .setListener(new BottomSheetListener() {
+                            @SuppressWarnings("NullableProblems")
+                            @Override
+                            public void onSheetShown(BottomSheetMenuDialogFragment bottomSheetMenuDialogFragment, Object o) {
+                            }
+
+                            @SuppressWarnings("NullableProblems")
+                            @Override
+                            public void onSheetItemSelected(BottomSheetMenuDialogFragment bottomSheetMenuDialogFragment, MenuItem menuItem, Object o) {
+                                int position = (int) o;
+                                switch(menuItem.getItemId()){
+                                    case R.id.edit:
+                                        edit(position);
+                                        break;
+                                    case R.id.delete:
+                                        remove(position);
+                                        break;
+                                    case R.id.insert:
+                                        insert();
+                                        break;
+                                }
+                            }
+
+                            @SuppressWarnings("NullableProblems")
+                            @Override
+                            public void onSheetDismissed(BottomSheetMenuDialogFragment bottomSheetMenuDialogFragment, Object o, int i) {
+                            }
+                        })
+                        .show(getSupportFragmentManager());
+                return false;
+            }
+        });
 
         et.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-
             }
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-
             }
 
             @Override
@@ -93,6 +140,85 @@ public class MainActivity extends AppCompatActivity {
         checkSearchResult();
 
         adapter.notifyDataSetChanged();
+    }
+
+    private void edit(final int position){
+        View v = LayoutInflater.from(this).inflate(R.layout.dialog_edit, null);
+
+        final EditText et_name = v.findViewById(R.id.et_name);
+        final EditText et_number = v.findViewById(R.id.et_number);
+
+        final Item item = shownData.get(position);
+
+        et_name.setText(item.name);
+        et_number.setText(item.number);
+
+        new AlertDialog.Builder(this)
+                .setTitle("수정")
+                .setView(v)
+                .setPositiveButton("완료", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if(patternMatchingNumber(et_number.getText().toString())){
+                            item.name = et_name.getText().toString();
+                            item.number = et_number.getText().toString();
+
+                            adapter.notifyDataSetChanged();
+                        }else{
+                            Toast.makeText(MainActivity.this, "전화번호 형식을 맞춰주세요", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                })
+                .setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+
+                    }
+                })
+                .show();
+    }
+
+    private void remove(int position){
+        baseData.remove(shownData.get(position));
+        shownData.remove(position);
+
+        adapter.notifyDataSetChanged();
+    }
+
+    private void insert(){
+        View v = LayoutInflater.from(this).inflate(R.layout.dialog_edit, null);
+
+        final EditText et_name = v.findViewById(R.id.et_name);
+        final EditText et_number = v.findViewById(R.id.et_number);
+
+        new AlertDialog.Builder(this)
+                .setTitle("수정")
+                .setView(v)
+                .setPositiveButton("완료", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        if(patternMatchingNumber(et_number.getText().toString())){
+                            baseData.add(new Item(et_name.getText().toString(), et_number.getText().toString()));
+
+                            search(et.getText().toString()); // 추가한 데이터가 검색할 경우 보이도록
+
+                            adapter.notifyDataSetChanged();
+                        }else{
+                            Toast.makeText(MainActivity.this, "전화번호 형식을 맞춰주세요", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                })
+                .setNegativeButton("취소", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+
+                    }
+                })
+                .show();
+    }
+
+    private boolean patternMatchingNumber(String str) {
+        return Pattern.matches("^\\d{2,3}-\\d{3,4}-\\d{4}$", str);
     }
 
     private void checkSearchResult(){
