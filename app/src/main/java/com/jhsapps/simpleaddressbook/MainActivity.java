@@ -1,7 +1,11 @@
 package com.jhsapps.simpleaddressbook;
 
+import android.Manifest;
 import android.content.DialogInterface;
+import android.content.pm.PackageManager;
+import android.database.Cursor;
 import android.os.Bundle;
+import android.provider.ContactsContract;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -13,8 +17,11 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import com.kennyc.bottomsheet.BottomSheetListener;
 import com.kennyc.bottomsheet.BottomSheetMenuDialogFragment;
@@ -33,16 +40,32 @@ public class MainActivity extends AppCompatActivity {
 
     CustomAdapter adapter;
 
+    final int PERMISSION_REQUEST_READ_CONTACTS = 100;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        if(ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS) != PackageManager.PERMISSION_GRANTED){
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.READ_CONTACTS)) {
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.READ_CONTACTS},
+                        PERMISSION_REQUEST_READ_CONTACTS);
+            }
+        }else{
+            init();
+        }
+    }
+
+    private void init(){
         lv = findViewById(R.id.lv);
         et = findViewById(R.id.et_search);
         tv = findViewById(R.id.tv);
 
-        baseData = generateData(/*20*/);
+        baseData = /*generateData(*//*20*//*);*/ getDataFromPhone();
         shownData = new ArrayList<>(baseData);
 
         adapter = new CustomAdapter(this, shownData);
@@ -104,6 +127,33 @@ public class MainActivity extends AppCompatActivity {
         });
 
         checkSearchResult();
+    }
+
+    private ArrayList<Item> getDataFromPhone(){
+        ArrayList<Item> items = new ArrayList<>();
+
+        Cursor c = getContentResolver().query(/*URI*/ ContactsContract.Contacts.CONTENT_URI, null, null, null,
+                /*Sort Order*/ ContactsContract.Contacts.DISPLAY_NAME_PRIMARY + " asc");
+
+        while(c.moveToNext()){
+            String id = c.getString(c.getColumnIndex(ContactsContract.Contacts._ID));
+            String name = c.getString(c.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME));
+
+            Cursor idCursor = getContentResolver().query(/*URI*/ ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                    null,
+                    /*Selection*/ ContactsContract.CommonDataKinds.Phone.CONTACT_ID + "=" + id,
+                    null, null);
+
+            if(idCursor.moveToFirst()){
+                String number = idCursor.getString(idCursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.NUMBER));
+                items.add(new Item(name, number));
+            }
+
+            idCursor.close();
+        }
+        c.close();
+
+        return items;
     }
 
     private ArrayList<Item> generateData(/*int count*/) {
@@ -226,6 +276,20 @@ public class MainActivity extends AppCompatActivity {
             tv.setVisibility(View.VISIBLE);
         }else{
             lv.setVisibility(View.VISIBLE);
+        }
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        switch (requestCode){
+            case PERMISSION_REQUEST_READ_CONTACTS:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED){
+                    Toast.makeText(this, "권한 승인", Toast.LENGTH_SHORT).show();
+                    init();
+                } else {
+                    Toast.makeText(this, "권한 거부\n앱을 종료합니다", Toast.LENGTH_SHORT).show();
+                    finish();
+                }
         }
     }
 }
