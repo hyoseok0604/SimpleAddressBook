@@ -163,7 +163,7 @@ public class MainActivity extends AppCompatActivity {
                             item.name = et_name.getText().toString();
                             item.number = et_number.getText().toString();
 
-                            adapter.notifyDataSetChanged();
+                            search(et.getText().toString()); // 변경된 데이터가 검색 결과에서 반영되도록
                         }else{
                             Toast.makeText(MainActivity.this, "전화번호 형식을 맞춰주세요", Toast.LENGTH_SHORT).show();
                         }
@@ -192,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
         final EditText et_number = v.findViewById(R.id.et_number);
 
         new AlertDialog.Builder(this)
-                .setTitle("수정")
+                .setTitle("추가")
                 .setView(v)
                 .setPositiveButton("완료", new DialogInterface.OnClickListener() {
                     @Override
@@ -201,8 +201,6 @@ public class MainActivity extends AppCompatActivity {
                             baseData.add(new Item(et_name.getText().toString(), et_number.getText().toString()));
 
                             search(et.getText().toString()); // 추가한 데이터가 검색할 경우 보이도록
-
-                            adapter.notifyDataSetChanged();
                         }else{
                             Toast.makeText(MainActivity.this, "전화번호 형식을 맞춰주세요", Toast.LENGTH_SHORT).show();
                         }
